@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(mod => mod.default(...args));
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
