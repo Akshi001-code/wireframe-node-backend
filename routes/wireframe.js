@@ -3,8 +3,8 @@ const router = express.Router();
 const axios = require('axios');
 const { enhanceHtmlWithGPT } = require('../utils/openaiEnhancer');
 
-// Configuration for Python API
-const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:5000';
+// Configuration for APIs
+const HUGGINGFACE_SPACE_URL = 'https://akshi12-wireframegenerator.hf.space';
 
 /**
  * @route   POST /api/wireframe/generate
@@ -32,11 +32,29 @@ router.post('/generate', async (req, res) => {
         let refined_html;
 
         if (method === 'python') {
-            // Call Python API for wireframe generation
-            const response = await axios.post(`${PYTHON_API_URL}/generate`, {
-                prompt
-            });
-            refined_html = response.data.refined_html;
+            try {
+                console.log('Calling Hugging Face Space API...');
+                // Call Hugging Face Space API
+                const response = await axios.post(`${HUGGINGFACE_SPACE_URL}/run/predict`, {
+                    data: [
+                        prompt,
+                        primaryColor || '#2196F3' // Default to blue if no color provided
+                    ]
+                });
+
+                console.log('Hugging Face response:', response.data);
+
+                if (response.data && Array.isArray(response.data.data) && response.data.data.length >= 2) {
+                    // The response contains both preview_html and refined_html
+                    refined_html = response.data.data[1]; // Get the refined HTML
+                } else {
+                    console.error('Invalid response structure:', response.data);
+                    throw new Error('Invalid response from Hugging Face Space');
+                }
+            } catch (error) {
+                console.error('Hugging Face Space error:', error.response?.data || error.message);
+                throw new Error('Failed to generate wireframe: ' + (error.response?.data?.error || error.message));
+            }
         } else {
             // Use OpenAI directly for wireframe generation
             refined_html = await enhanceHtmlWithGPT(
