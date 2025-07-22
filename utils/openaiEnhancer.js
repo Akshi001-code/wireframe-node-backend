@@ -4,12 +4,17 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 async function enhanceHtmlWithGPT(html, prompt, primaryColor) {
   try {
-    if (!html || !prompt || !primaryColor) {
+    if (!prompt || !primaryColor) {
       console.error('Missing required parameters for enhanceHtmlWithGPT');
       return html;
     }
 
-    const gptPrompt = `You are a UI wireframe assistant. ONLY return HTML/CSS for a wireframe in black, white, and gray (no other colors). Do not use any color except black, white, or gray for backgrounds, borders, or text. The image should be visually simple and minimal, with no color. Input HTML: ${html} User's original request: "${prompt}" Generate a small, minimal, black-and-white wireframe.`;
+    // Determine if this is a direct generation or enhancement
+    const isDirectGeneration = html === '<div class="wireframe-container"></div>';
+
+    const gptPrompt = isDirectGeneration
+      ? `You are a UI wireframe generator. Create a complete HTML/CSS wireframe based on this description: "${prompt}". Use the primary color ${primaryColor} for key elements. The wireframe should be responsive and follow modern design principles. Return ONLY the complete HTML/CSS code.`
+      : `You are a UI wireframe assistant. ONLY return HTML/CSS for a wireframe in black, white, and gray (no other colors). Do not use any color except black, white, or gray for backgrounds, borders, or text. The image should be visually simple and minimal, with no color. Input HTML: ${html} User's original request: "${prompt}" Generate a small, minimal, black-and-white wireframe.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -23,7 +28,7 @@ async function enhanceHtmlWithGPT(html, prompt, primaryColor) {
           { role: 'system', content: 'You are a UI enhancement assistant that ONLY returns HTML/CSS code with no additional text or explanations.' },
           { role: 'user', content: gptPrompt }
         ],
-        max_tokens: 1500,
+        max_tokens: 2000, // Increased for direct generation
         temperature: 0.7,
       }),
     });
@@ -43,12 +48,8 @@ async function enhanceHtmlWithGPT(html, prompt, primaryColor) {
     enhancedHtml = enhancedHtml.replace(/```html\n?/gi, '')
                               .replace(/```\n?/gi, '')
                               .replace(/```css\n?/gi, '');
-    const htmlStart = enhancedHtml.indexOf('<');
-    const htmlEnd = enhancedHtml.lastIndexOf('>') + 1;
-    if (htmlStart !== -1 && htmlEnd !== -1) {
-      enhancedHtml = enhancedHtml.substring(htmlStart, htmlEnd);
-    }
-    return enhancedHtml || html;
+
+    return enhancedHtml;
   } catch (error) {
     console.error('Error in enhanceHtmlWithGPT:', error);
     return html;
