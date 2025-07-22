@@ -31,7 +31,8 @@
     "mongoose": "^7.0.3",
     "morgan": "^1.10.0",
     "multer": "^2.0.1",
-    "puppeteer": "^24.12.1"
+    "puppeteer": "^24.12.1",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

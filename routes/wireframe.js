@@ -33,32 +33,64 @@ router.post('/generate', async (req, res) => {
 
         if (method === 'python') {
             try {
-                console.log('Calling Hugging Face Space API...');
-                // Call Hugging Face Space API
-                const response = await axios.post(`${HUGGINGFACE_SPACE_URL}/run/predict`, {
-                    data: [
-                        prompt,
-                        primaryColor || '#2196F3' // Default to blue if no color provided
-                    ]
+                console.log('Calling Hugging Face Space API with data:', {
+                    prompt,
+                    primaryColor: primaryColor || '#2196F3'
                 });
 
-                console.log('Hugging Face response:', response.data);
+                // Make the prediction request using the api/predict endpoint
+                const response = await axios.post(`${HUGGINGFACE_SPACE_URL}/api/predict`, {
+                    data: [
+                        prompt,
+                        primaryColor || '#2196F3'
+                    ]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 60000 // 60 second timeout since model loading might take time
+                });
 
-                if (response.data && Array.isArray(response.data.data) && response.data.data.length >= 2) {
-                    // The response contains both preview_html and refined_html
-                    refined_html = response.data.data[1]; // Get the refined HTML
+                console.log('Hugging Face raw response:', response.data);
+
+                if (response.data && response.data.data) {
+                    refined_html = response.data.data[1] || response.data.data[0];
+                    if (typeof refined_html !== 'string') {
+                        console.error('Unexpected response format:', refined_html);
+                        refined_html = JSON.stringify(refined_html);
+                    }
+                } else if (response.data && response.data.error) {
+                    throw new Error(`API Error: ${response.data.error}`);
                 } else {
-                    console.error('Invalid response structure:', response.data);
-                    throw new Error('Invalid response from Hugging Face Space');
+                    console.error('Unexpected response structure:', response.data);
+                    throw new Error('Invalid response format from Hugging Face Space');
                 }
             } catch (error) {
-                console.error('Hugging Face Space error:', error.response?.data || error.message);
-                throw new Error('Failed to generate wireframe: ' + (error.response?.data?.error || error.message));
+                console.error('Hugging Face Space detailed error:', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status,
+                    headers: error.response?.headers
+                });
+
+                // Try to provide a more helpful error message
+                let errorMessage = 'Failed to generate wireframe: ';
+                if (error.response?.data?.error) {
+                    errorMessage += error.response.data.error;
+                } else if (error.response?.status === 500) {
+                    errorMessage += 'Internal server error in Hugging Face Space';
+                } else if (error.code === 'ECONNABORTED') {
+                    errorMessage += 'Request timed out';
+                } else {
+                    errorMessage += error.message;
+                }
+
+                throw new Error(errorMessage);
             }
         } else {
             // Use OpenAI directly for wireframe generation
             refined_html = await enhanceHtmlWithGPT(
-                '<div class="wireframe-container"></div>', // Base HTML template
+                '<div class="wireframe-container"></div>',
                 prompt,
                 primaryColor
             );
@@ -73,11 +105,15 @@ router.post('/generate', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Wireframe generation error:', error.message);
+        console.error('Wireframe generation error:', {
+            message: error.message,
+            stack: error.stack
+        });
         res.status(500).json({
             success: false,
             message: 'Error generating wireframe',
-            error: error.response?.data || error.message
+            error: error.message,
+            details: error.response?.data || 'No additional details available'
         });
     }
 });
