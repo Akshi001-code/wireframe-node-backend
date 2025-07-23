@@ -30,7 +30,7 @@ router.post('/html-to-image', async (req, res) => {
     await browser.close();
     res.json({
       success: true,
-      url: `/public/${filename}`,
+      imageUrl: `/public/${filename}`,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
