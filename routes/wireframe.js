@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { enhanceHtmlWithGPT } = require('../utils/openaiEnhancer');
+const WireframeGeneration = require('../models/WireframeGeneration');
 
 // Configuration for APIs
 const HUGGINGFACE_SPACE_URL = 'https://akshi12-wireframegenerator.hf.space';
@@ -13,7 +14,7 @@ const HUGGINGFACE_SPACE_URL = 'https://akshi12-wireframegenerator.hf.space';
  */
 router.post('/generate', async (req, res) => {
     try {
-        const { prompt, method = 'python', primaryColor } = req.body;
+        const { prompt, method = 'python', primaryColor, projectId } = req.body;
 
         if (!prompt) {
             return res.status(400).json({ 
@@ -97,6 +98,17 @@ router.post('/generate', async (req, res) => {
         }
 
         // Return the generated wireframe
+        // Save generation record if projectId is provided
+        if (projectId) {
+            try {
+                await WireframeGeneration.create({
+                    projectId,
+                    prompt
+                });
+            } catch (err) {
+                console.error('Failed to save wireframe generation record:', err);
+            }
+        }
         res.json({
             success: true,
             data: {
@@ -115,6 +127,16 @@ router.post('/generate', async (req, res) => {
             error: error.message,
             details: error.response?.data || 'No additional details available'
         });
+    }
+});
+
+// Endpoint to get wireframe generation count for a project
+router.get('/count/:projectId', async (req, res) => {
+    try {
+        const count = await WireframeGeneration.countDocuments({ projectId: req.params.projectId });
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to get wireframe generation count' });
     }
 });
 
