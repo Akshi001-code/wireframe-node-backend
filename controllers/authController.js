@@ -3,7 +3,8 @@ const User = require('../models/User');
 
 // Generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  const secret = process.env.JWT_SECRET || 'dev_secret_change_me';
+  return jwt.sign({ id }, secret, {
     expiresIn: '30d',
   });
 };
@@ -111,12 +112,27 @@ const login = async (req, res) => {
       // Try to find or create an admin user in the database for consistency
       let adminUser = await User.findOne({ email: 'adimn@gmail.com' });
       if (!adminUser) {
-        adminUser = await User.create({
-          email: 'adimn@gmail.com',
-          username: 'admin',
-          password: 'admin',
-          role: 'admin',
-        });
+        try {
+          adminUser = await User.create({
+            email: 'adimn@gmail.com',
+            username: 'admin',
+            password: 'admin',
+            role: 'admin',
+          });
+        } catch (err) {
+          // Handle duplicate username by retrying with a unique one
+          if (err && err.code === 11000 && err.keyPattern && err.keyPattern.username) {
+            const uniqueUsername = 'admin_' + Math.random().toString(36).slice(-6);
+            adminUser = await User.create({
+              email: 'adimn@gmail.com',
+              username: uniqueUsername,
+              password: 'admin',
+              role: 'admin',
+            });
+          } else {
+            throw err;
+          }
+        }
       } else if (adminUser.role !== 'admin') {
         adminUser.role = 'admin';
         await adminUser.save();
