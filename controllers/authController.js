@@ -106,6 +106,33 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Hardcoded admin login
+    if (email === 'adimn@gmail.com' && password === 'admin') {
+      // Try to find or create an admin user in the database for consistency
+      let adminUser = await User.findOne({ email: 'adimn@gmail.com' });
+      if (!adminUser) {
+        adminUser = await User.create({
+          email: 'adimn@gmail.com',
+          username: 'admin',
+          password: 'admin',
+          role: 'admin',
+        });
+      } else if (adminUser.role !== 'admin') {
+        adminUser.role = 'admin';
+        await adminUser.save();
+      }
+
+      return res.json({
+        _id: adminUser._id,
+        email: adminUser.email,
+        username: adminUser.username,
+        role: adminUser.role,
+        contact: adminUser.contact,
+        profileImage: adminUser.profileImage,
+        token: generateToken(adminUser._id),
+      });
+    }
+
     // Check for user
     const user = await User.findOne({ email });
     if (!user) {
