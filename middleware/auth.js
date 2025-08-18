@@ -14,12 +14,8 @@ const protect = async (req, res, next) => {
     }
 
     try {
-      const secret = process.env.JWT_SECRET || 'dev_secret_change_me';
-      const decoded = jwt.verify(token, secret);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({ message: 'Not authorized, user not found' });
-      }
       next();
     } catch (error) {
       res.status(401).json({ message: 'Not authorized, token failed' });
@@ -29,15 +25,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-const isAdmin = (req, res, next) => {
-  try {
-    if (req.user && req.user.role === 'admin') {
-      return next();
-    }
-    return res.status(403).json({ message: 'Forbidden: admin access required' });
-  } catch (error) {
-    return res.status(500).json({ message: 'Server error' });
-  }
-};
-
-module.exports = { protect, isAdmin };
+module.exports = { protect }; 

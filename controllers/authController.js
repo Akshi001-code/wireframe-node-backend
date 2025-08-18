@@ -3,8 +3,7 @@ const User = require('../models/User');
 
 // Generate JWT
 const generateToken = (id) => {
-  const secret = process.env.JWT_SECRET || 'dev_secret_change_me';
-  return jwt.sign({ id }, secret, {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
@@ -106,48 +105,6 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Hardcoded admin login
-    if (email === 'adimn@gmail.com' && password === 'admin') {
-      // Try to find or create an admin user in the database for consistency
-      let adminUser = await User.findOne({ email: 'adimn@gmail.com' });
-      if (!adminUser) {
-        try {
-          adminUser = await User.create({
-            email: 'adimn@gmail.com',
-            username: 'admin',
-            password: 'admin',
-            role: 'admin',
-          });
-        } catch (err) {
-          // Handle duplicate username by retrying with a unique one
-          if (err && err.code === 11000 && err.keyPattern && err.keyPattern.username) {
-            const uniqueUsername = 'admin_' + Math.random().toString(36).slice(-6);
-            adminUser = await User.create({
-              email: 'adimn@gmail.com',
-              username: uniqueUsername,
-              password: 'admin',
-              role: 'admin',
-            });
-          } else {
-            throw err;
-          }
-        }
-      } else if (adminUser.role !== 'admin') {
-        adminUser.role = 'admin';
-        await adminUser.save();
-      }
-
-      return res.json({
-        _id: adminUser._id,
-        email: adminUser.email,
-        username: adminUser.username,
-        role: adminUser.role,
-        contact: adminUser.contact,
-        profileImage: adminUser.profileImage,
-        token: generateToken(adminUser._id),
-      });
-    }
 
     // Check for user
     const user = await User.findOne({ email });

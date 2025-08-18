@@ -26,7 +26,7 @@ app.use(morgan('dev'));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
 const taskRoutes = require('./routes/tasks');
