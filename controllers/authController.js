@@ -107,10 +107,10 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     // Hardcoded admin login bypass (not persisted in DB)
-    if (email === 'adimn@gmail.com' && password === 'admin') {
+    if ((email === 'adimn@gmail.com' || email === 'admin@gmail.com') && password === 'admin') {
       return res.json({
         _id: 'admin',
-        email: 'adimn@gmail.com',
+        email,
         username: 'admin',
         role: 'admin',
         contact: '',
