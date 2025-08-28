@@ -48,9 +48,20 @@ const addDesign = async (req, res) => {
     });
 
     // Update project stats
+    console.log('Before updating project stats:', {
+      projectId: project._id,
+      currentDesigns: project.stats.designs,
+      newDesignId: design._id
+    });
+    
     project.stats.designs += 1;
     project.lastUpdate = Date.now();
     await project.save();
+    
+    console.log('After updating project stats:', {
+      projectId: project._id,
+      updatedDesigns: project.stats.designs
+    });
 
     res.status(201).json(design);
   } catch (error) {

@@ -2,8 +2,28 @@ const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 
+// Get all notifications for a user
+router.get('/', protect, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ 
+      userId: req.user._id,
+      isRead: false 
+    })
+    .populate('taskId', 'title dueDate status')
+    .populate('projectId', 'name')
+    .sort({ createdAt: -1 })
+    .limit(20);
+
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get approaching deadlines (legacy endpoint for backward compatibility)
 router.get('/deadlines', protect, async (req, res) => {
   const now = new Date();
   const windows = [
@@ -40,6 +60,52 @@ router.get('/deadlines', protect, async (req, res) => {
     });
 
     res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Mark notification as read
+router.put('/:id/read', protect, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.json(notification);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Mark all notifications as read
+router.put('/read-all', protect, async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { userId: req.user._id, isRead: false },
+      { isRead: true }
+    );
+
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get notification count
+router.get('/count', protect, async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({ 
+      userId: req.user._id, 
+      isRead: false 
+    });
+    res.json({ count });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
