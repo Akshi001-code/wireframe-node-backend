@@ -111,4 +111,54 @@ router.get('/count', protect, async (req, res) => {
   }
 });
 
+// Test endpoint to manually trigger deadline check
+router.post('/test-deadline-check', protect, async (req, res) => {
+  try {
+    console.log('[TEST] Manual deadline check triggered by user:', req.user._id);
+    
+    const now = new Date();
+    const passedTasks = await require('../models/Task').find({ 
+      status: 'pending', 
+      dueDate: { $lt: now } 
+    }).populate({
+      path: 'projectId',
+      select: 'userId'
+    });
+    
+    console.log('[TEST] Found', passedTasks.length, 'passed deadline tasks');
+    
+    let notificationsCreated = 0;
+    for (const task of passedTasks) {
+      if (task.projectId && task.projectId.userId) {
+        const existingNotification = await Notification.findOne({
+          taskId: task._id,
+          type: 'deadline_passed',
+          createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) }
+        });
+
+        if (!existingNotification) {
+          await Notification.create({
+            userId: task.projectId.userId,
+            taskId: task._id,
+            projectId: task.projectId._id,
+            type: 'deadline_passed',
+            title: 'Deadline Passed',
+            message: `Task "${task.title}" has passed its deadline`
+          });
+          notificationsCreated++;
+        }
+      }
+    }
+    
+    res.json({ 
+      message: 'Deadline check completed',
+      passedTasksFound: passedTasks.length,
+      notificationsCreated: notificationsCreated
+    });
+  } catch (err) {
+    console.error('[TEST] Error in manual deadline check:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router; 
